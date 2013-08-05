@@ -2,14 +2,18 @@
 #include "pebble_app.h"
 #include "pebble_fonts.h"
 
+#include "config.h"
+
+#if ROCKSHOT
+#include "http.h"
+#include "httpcapture.h"
+#endif
 
 #define MY_UUID { 0x63, 0x77, 0xDC, 0xE6, 0xDB, 0x4D, 0x4E, 0x52, 0x89, 0xF3, 0x70, 0xDC, 0xCC, 0x05, 0x20, 0x82 }
 
-PBL_APP_INFO(MY_UUID, "Dots", "Matthew Tole", 1, 0, DEFAULT_MENU_ICON, APP_INFO_WATCH_FACE);
+PBL_APP_INFO(MY_UUID, "Dots", "Matthew Tole", 1, 0, RESOURCE_ID_MENU_ICON, APP_INFO_WATCH_FACE);
 
-// Commented out because inverted colours is gross.
-#define INVERT_COLORS
-#ifndef INVERT_COLORS
+#if INVERT_COLORS
 #define COLOR_FOREGROUND GColorBlack
 #define COLOR_BACKGROUND GColorWhite
 #else
@@ -21,13 +25,22 @@ Window window;
 Layer layer_hours;
 Layer layer_minutes;
 Layer layer_seconds;
+HeapBitmap bmp_dot, bmp_dot_small;
 
 void layer_hours_update_callback(Layer* me, GContext* ctx);
 void layer_minutes_update_callback(Layer* me, GContext* ctx);
 void layer_seconds_update_callback(Layer* me, GContext* ctx);
 void handle_init(AppContextRef ctx);
 void handle_tick(AppContextRef ctx, PebbleTickEvent *t);
+void window_load(Window *me);
+void window_unload(Window *me);
 void draw_cell(GContext* ctx, int x, int y, bool small);
+void load_bitmaps();
+void unload_bitmaps();
+
+#if ROCKSHOT
+void  http_success(int32_t cookie, int http_status, DictionaryIterator *dict, void *ctx);
+#endif
 
 void pbl_main(void *params) {
   PebbleAppHandlers handlers = {
@@ -37,6 +50,17 @@ void pbl_main(void *params) {
       .tick_units = SECOND_UNIT
     }
   };
+
+  #if ROCKSHOT
+  handlers.messaging_info = (PebbleAppMessagingInfo) {
+    .buffer_sizes = {
+      .inbound = 124,
+      .outbound = 124,
+    },
+  };
+  http_capture_main(&handlers);
+  #endif
+
   app_event_loop(params, &handlers);
 }
 
@@ -44,7 +68,21 @@ void handle_init(AppContextRef ctx) {
 
   window_init(&window, "Dots Watchface");
   window_stack_push(&window, true);
+  window_set_window_handlers(&window, (WindowHandlers){
+    .load = window_load,
+    .unload = window_unload
+  });
   window_set_background_color(&window, COLOR_BACKGROUND);
+
+  resource_init_current_app(&APP_RESOURCES);
+
+  #if ROCKSHOT
+  http_set_app_id(15);
+  http_register_callbacks((HTTPCallbacks) {
+    .success = http_success
+  }, NULL);
+  http_capture_init(ctx);
+  #endif
 
   layer_init(&layer_hours, GRect(0, 0, 144, 28));
   layer_hours.update_proc = &layer_hours_update_callback;
@@ -72,6 +110,28 @@ void handle_tick(AppContextRef ctx, PebbleTickEvent *t) {
   if (now.tm_min == 0) {
     layer_mark_dirty(&layer_hours);
   }
+}
+
+void window_load(Window *me) {
+  load_bitmaps();
+}
+
+void window_unload(Window *me) {
+  unload_bitmaps();
+}
+
+void load_bitmaps() {
+  #if INVERT_COLORS
+  heap_bitmap_init(&bmp_dot, RESOURCE_ID_DOT_BLACK);
+  heap_bitmap_init(&bmp_dot_small, RESOURCE_ID_DOT_SMALL_BLACK);
+  #else
+  heap_bitmap_init(&bmp_dot, RESOURCE_ID_DOT_WHITE);
+  heap_bitmap_init(&bmp_dot_small, RESOURCE_ID_DOT_SMALL_WHITE);
+  #endif
+}
+
+void unload_bitmaps() {
+  heap_bitmap_deinit(&bmp_dot);
 }
 
 void layer_hours_update_callback(Layer* me, GContext* ctx) {
@@ -132,14 +192,14 @@ void layer_seconds_update_callback(Layer* me, GContext* ctx) {
 }
 
 void draw_cell(GContext* ctx, int x, int y, bool small) {
-  GRect cell;
   if (small) {
-    cell.size = GSize(5, 6);
-    cell.origin = GPoint(x + 3, y + 3);
+    graphics_draw_bitmap_in_rect(ctx, &bmp_dot_small.bmp, GRect(x, y, 12, 14));
   }
   else {
-    cell.size = GSize(10, 12);
-    cell.origin = GPoint(x, y);
+    graphics_draw_bitmap_in_rect(ctx, &bmp_dot.bmp, GRect(x, y, 12, 14));
   }
-  graphics_fill_rect(ctx, cell, small ? 2 : 4, GCornersAll);
 }
+
+#if ROCKSHOT
+void http_success(int32_t cookie, int http_status, DictionaryIterator *dict, void *ctx) {}
+#endif
