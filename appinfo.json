@@ -1,0 +1,42 @@
+{
+  "uuid": "6377dce6-db4d-4e52-89f3-70dccc052082",
+  "shortName": "Dots",
+  "longName": "Dots",
+  "companyName": "Matthew Tole",
+  "versionCode": 2,
+  "versionLabel": "2.0.0",
+  "watchapp": {
+    "watchface": true
+  },
+  "appKeys": {},
+  "resources": {
+    "media": [
+      {
+        "menuIcon": true,
+        "type": "png",
+        "name": "MENU_ICON",
+        "file": "images/menu.png"
+      },
+      {
+        "type": "png",
+        "name": "DOT_WHITE",
+        "file": "images/dot_white.png"
+      },
+      {
+        "type": "png",
+        "name": "DOT_BLACK",
+        "file": "images/dot_black.png"
+      },
+      {
+        "type": "png",
+        "name": "DOT_SMALL_WHITE",
+        "file": "images/dot_small_white.png"
+      },
+      {
+        "type": "png",
+        "name": "DOT_SMALL_BLACK",
+        "file": "images/dot_small_black.png"
+      }
+    ]
+  }
+}
